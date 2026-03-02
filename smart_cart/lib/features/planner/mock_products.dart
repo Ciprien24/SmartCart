@@ -1,0 +1,88 @@
+import 'package:smart_cart/core/product.dart';
+
+const mockProducts = <Product>[
+  Product(
+    id: 'p1',
+    name: 'Eggs 10 pcs',
+    category: 'Protein',
+    price: 1.99,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p2',
+    name: 'Chicken breast 1kg',
+    category: 'Protein',
+    price: 6.49,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p3',
+    name: 'Greek yogurt 1kg',
+    category: 'Protein',
+    price: 3.49,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p4',
+    name: 'Oats 1kg',
+    category: 'Carbs',
+    price: 1.79,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p5',
+    name: 'Rice 1kg',
+    category: 'Carbs',
+    price: 2.19,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p6',
+    name: 'Pasta 1kg',
+    category: 'Carbs',
+    price: 1.59,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p7',
+    name: 'Bananas 1kg',
+    category: 'Fruits',
+    price: 1.39,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p8',
+    name: 'Apples 1kg',
+    category: 'Fruits',
+    price: 1.89,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p9',
+    name: 'Tomatoes 1kg',
+    category: 'Veggies',
+    price: 2.49,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p10',
+    name: 'Frozen veggies 1kg',
+    category: 'Veggies',
+    price: 2.29,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p11',
+    name: 'Olive oil 500ml',
+    category: 'Fats',
+    price: 4.99,
+    store: 'Lidl',
+  ),
+  Product(
+    id: 'p12',
+    name: 'Peanut butter 500g',
+    category: 'Fats',
+    price: 3.99,
+    store: 'Lidl',
+  ),
+];
