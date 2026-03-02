@@ -5,8 +5,8 @@ void main() {
   testWidgets('Preferences screen renders', (WidgetTester tester) async {
     await tester.pumpWidget(const SmartCartApp());
 
-    expect(find.text('Preferences'), findsOneWidget);
-    expect(find.text('Weekly budget (€)'), findsOneWidget);
-    expect(find.text('Generate Weekly List'), findsOneWidget);
+    expect(find.text('SmartCart'), findsOneWidget);
+    expect(find.text('Set Your Preferences'), findsOneWidget);
+    expect(find.text('Continue'), findsOneWidget);
   });
 }

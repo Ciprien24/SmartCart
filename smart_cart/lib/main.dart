@@ -10,9 +10,16 @@ class SmartCartApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: PreferencesScreen(),
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(textScaler: const TextScaler.linear(1.0)),
+          child: child!,
+        );
+      },
+      home: const PreferencesScreen(),
     );
   }
 }
