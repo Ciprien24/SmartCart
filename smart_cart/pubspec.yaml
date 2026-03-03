@@ -58,7 +58,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - lib/app/assets/SmartCart_Logo.png
+    - lib/app/assets/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

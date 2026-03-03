@@ -16,7 +16,7 @@ class SmartCartApp extends StatelessWidget {
         final mediaQuery = MediaQuery.of(context);
         return MediaQuery(
           data: mediaQuery.copyWith(textScaler: const TextScaler.linear(1.0)),
-          child: child!,
+          child: child ?? const SizedBox.shrink(),
         );
       },
       home: const PreferencesScreen(),
