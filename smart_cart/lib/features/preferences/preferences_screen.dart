@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:smart_cart/core/preferences.dart';
+import 'package:smart_cart/features/carts/carts_screen.dart';
+import 'package:smart_cart/features/planner/lidl_prices_api.dart';
 import 'package:smart_cart/features/planner/plan_generator.dart';
 import 'package:smart_cart/features/shopping_list/shopping_list_screen.dart';
 
@@ -12,6 +14,8 @@ class PreferencesScreen extends StatefulWidget {
 }
 
 class _PreferencesScreenState extends State<PreferencesScreen> {
+  static const String _lidlUrl =
+      'https://raw.githubusercontent.com/Ciprien24/SmartCart_Backend/refs/heads/main/data/lidl/latest.json';
   static const Color _background = Color(0xFFFFFFFF);
   static const Color _divider = Color(0xFFE9EDF3);
   static const Color _textPrimary = Color(0xFF0B1220);
@@ -39,6 +43,8 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   String _selectedGoal = 'Maintain Weight';
   String? _budgetError;
   String? _supermarketError;
+  String? _generateError;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -171,7 +177,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     }
   }
 
-  void _continue() {
+  Future<void> _continue() async {
     setState(() {
       _budgetError = (_budget == null || _budget! <= 0)
           ? 'Please enter a valid budget'
@@ -179,6 +185,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       _supermarketError = _selectedSupermarket == null
           ? 'Please choose a supermarket'
           : null;
+      _generateError = null;
     });
 
     if (_budgetError != null || _supermarketError != null) return;
@@ -188,14 +195,38 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       supermarket: _selectedSupermarket!,
       goal: _goalToPreferenceValue(_selectedGoal),
     );
-    final plan = PlanGenerator().generate(preferences);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            ShoppingListScreen(plan: plan, preferences: preferences),
-      ),
-    );
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final products = await fetchLidlProducts(_lidlUrl);
+      if (!mounted) return;
+      final plan = PlanGenerator().generateFromProducts(preferences, products);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ShoppingListScreen(plan: plan, preferences: preferences),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString();
+      setState(() {
+        _generateError = message;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to generate list: $message')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Widget _buildStandardRow({
@@ -326,6 +357,26 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
               Stack(
                 alignment: Alignment.center,
                 children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: () {
+                        if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                          return;
+                        }
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CartsScreen()),
+                        );
+                      },
+                      icon: const Icon(
+                        CupertinoIcons.back,
+                        size: 30,
+                        color: _textPrimary,
+                      ),
+                    ),
+                  ),
                   const Text('SmartCart', style: titleStyle),
                   Transform.translate(
                     offset: const Offset(-112, 0),
@@ -391,6 +442,18 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
               _buildGoalRow(),
               const Divider(height: 1, thickness: 1, color: _divider),
               const Spacer(),
+              if (_generateError != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    _generateError!,
+                    style: const TextStyle(
+                      color: _error,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
               Container(
                 height: 72,
                 margin: const EdgeInsets.only(bottom: 28),
@@ -413,16 +476,27 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
-                    onTap: _continue,
-                    child: const Center(
-                      child: Text(
-                        'Continue',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
+                    onTap: _isLoading ? null : _continue,
+                    child: Center(
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Text(
+                              'Generate Weekly List',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                 ),

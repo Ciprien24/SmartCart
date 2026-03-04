@@ -1,27 +1,32 @@
 import 'package:smart_cart/core/preferences.dart';
+import 'package:smart_cart/core/product.dart';
 import 'package:smart_cart/core/shopping_item.dart';
 import 'package:smart_cart/core/weekly_plan.dart';
 import 'mock_products.dart';
 
 class PlanGenerator {
   WeeklyPlan generate(Preferences prefs) {
+    return generateFromProducts(prefs, mockProducts);
+  }
+
+  WeeklyPlan generateFromProducts(Preferences prefs, List<Product> products) {
     // 1) filter by store
-    final products = mockProducts
-        .where((p) => p.store == prefs.supermarket)
+    final selectedStore = prefs.supermarket.toLowerCase();
+    final filteredProducts = products
+        .where((p) => p.store.toLowerCase() == selectedStore)
         .toList();
-    if (products.isEmpty) {
-      // fallback: if store doesn't match mock list, just use all
-      products.addAll(mockProducts);
-    }
+    final sourceProducts = filteredProducts.isNotEmpty || selectedStore == 'lidl'
+        ? filteredProducts
+        : products.toList();
 
     // 2) simple budget fill: add items until budget is reached
     final items = <ShoppingItem>[];
     double running = 0.0;
 
     // naive strategy: cheaper items first (helps hit budget)
-    products.sort((a, b) => a.price.compareTo(b.price));
+    sourceProducts.sort((a, b) => a.price.compareTo(b.price));
 
-    for (final p in products) {
+    for (final p in sourceProducts) {
       if (running + p.price > prefs.budgetWeekly) continue;
       items.add(ShoppingItem(product: p, quantity: 1));
       running += p.price;

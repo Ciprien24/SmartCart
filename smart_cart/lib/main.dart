@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:smart_cart/features/preferences/preferences_screen.dart';
+import 'package:smart_cart/features/carts/carts_screen.dart';
 
 void main() {
   runApp(const SmartCartApp());
@@ -19,7 +19,7 @@ class SmartCartApp extends StatelessWidget {
           child: child ?? const SizedBox.shrink(),
         );
       },
-      home: const PreferencesScreen(),
+      home: const CartsScreen(),
     );
   }
 }

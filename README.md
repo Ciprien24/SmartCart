@@ -1,1 +1,0 @@
-# AI_Shopping_Nutriton_App
