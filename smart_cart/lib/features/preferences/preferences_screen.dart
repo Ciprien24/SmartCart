@@ -1,8 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:smart_cart/core/preferences.dart';
+import 'package:smart_cart/core/db/product_cache_store.dart';
 import 'package:smart_cart/features/planner/lidl_prices_api.dart';
 import 'package:smart_cart/features/planner/plan_generator.dart';
+import 'package:smart_cart/core/db/shopping_list_mapper.dart';
+import 'package:smart_cart/core/db/shopping_list_repository.dart';
 import 'package:smart_cart/features/shopping_list/shopping_list_screen.dart';
 
 class PreferencesScreen extends StatefulWidget {
@@ -37,6 +40,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   String? _supermarketError;
   String? _generateError;
   bool _isLoading = false;
+  final ProductCacheStore _productCacheStore = ProductCacheStore();
 
   Future<void> _openBudgetSheet() async {
     final result = await showModalBottomSheet<double>(
@@ -101,7 +105,8 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      onPressed: () => Navigator.of(context).pop(selectedBudget),
+                      onPressed: () =>
+                          Navigator.of(context).pop(selectedBudget),
                       child: const Text(
                         'Done',
                         style: TextStyle(fontWeight: FontWeight.w800),
@@ -193,14 +198,29 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     });
 
     try {
-      final products = await fetchLidlProducts(_lidlUrl);
+      final snapshot = await fetchLidlSnapshot(_lidlUrl);
+      final products = snapshot.products;
+      final fetchedAt = snapshot.fetchedAt;
+      await _productCacheStore.saveCachedProducts('Lidl', fetchedAt, products);
       if (!mounted) return;
       final plan = PlanGenerator().generateFromProducts(preferences, products);
+      final entity = ShoppingListMapper.toEntity(
+        plan: plan,
+        preferences: preferences,
+        fetchedAt: fetchedAt,
+      );
+      final savedId = await ShoppingListRepository().save(entity);
+      entity.id = savedId;
+      if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              ShoppingListScreen(plan: plan, preferences: preferences),
+          builder: (_) => ShoppingListScreen(
+            plan: plan,
+            preferences: preferences,
+            savedListId: savedId,
+            fetchedAt: fetchedAt,
+          ),
         ),
       );
     } catch (error) {
@@ -209,9 +229,9 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       setState(() {
         _generateError = message;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to generate list: $message')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to generate list: $message')),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -312,33 +332,37 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
             ),
           ),
           Row(
-            children: _goalLabels.map((label) {
-              final isSelected = _selectedGoal == label;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedGoal = label),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isSelected ? _accentOrange : const Color(0xFFF1F3F8),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: isSelected ? Colors.white : _textMuted,
+            children: _goalLabels
+                .map((label) {
+                  final isSelected = _selectedGoal == label;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedGoal = label),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? _accentOrange
+                              : const Color(0xFFF1F3F8),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected ? Colors.white : _textMuted,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(growable: false),
+                  );
+                })
+                .toList(growable: false),
           ),
         ],
       ),

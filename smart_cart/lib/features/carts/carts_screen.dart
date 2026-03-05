@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:smart_cart/features/carts/saved_lists_screen.dart';
 import 'package:smart_cart/features/preferences/preferences_screen.dart';
 
 class CartsScreen extends StatelessWidget {
@@ -18,6 +19,7 @@ class CartsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       backgroundColor: _pageBackground,
       body: DefaultTextStyle.merge(
@@ -25,7 +27,7 @@ class CartsScreen extends StatelessWidget {
         child: Stack(
           children: [
             Container(color: _pageBackground),
-            _buildHeader(context, topInset),
+            _buildHeader(topInset),
             Positioned(
               top: 110 + topInset,
               left: 0,
@@ -45,20 +47,31 @@ class CartsScreen extends StatelessWidget {
                         'Supermarkets',
                         style: TextStyle(
                           color: _textDark,
-                          fontSize: 26,
+                          fontSize: 24,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 6),
+                      const Text(
+                        '',
+                        style: TextStyle(
+                          color: Color(0xFF74788C),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                       _SupermarketCard(
                         name: _stores[0].name,
                         assetPath: _stores[0].asset,
+                        onTap: () => _openStore(context, _stores[0].name),
                       ),
                       const SizedBox(height: 18),
                       _SupermarketCard(
                         name: _stores[1].name,
                         assetPath: _stores[1].asset,
+                        onTap: () => _openStore(context, _stores[1].name),
                       ),
                     ],
                   ),
@@ -90,8 +103,8 @@ class CartsScreen extends StatelessWidget {
                     child: Center(
                       child: Image.asset(
                         'lib/app/assets/Button_logo.png',
-                        width: 150,
-                        height: 150,
+                        width: 100,
+                        height: 100,
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -105,7 +118,14 @@ class CartsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, double topInset) {
+  void _openStore(BuildContext context, String store) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => SavedListsScreen(store: store)),
+    );
+  }
+
+  Widget _buildHeader(double topInset) {
     return Container(
       height: 150 + topInset,
       padding: EdgeInsets.fromLTRB(24, topInset + 2, 24, 0),
@@ -144,14 +164,18 @@ class CartsScreen extends StatelessWidget {
 class _SupermarketCard extends StatelessWidget {
   final String name;
   final String assetPath;
+  final VoidCallback onTap;
 
-  const _SupermarketCard({required this.name, required this.assetPath});
+  const _SupermarketCard({
+    required this.name,
+    required this.assetPath,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 78,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
@@ -163,38 +187,48 @@ class _SupermarketCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            height: 80,
-            child: Image.asset(
-              assetPath,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => const Icon(
-                CupertinoIcons.shopping_cart,
-                size: 18,
-                color: CartsScreen._textDark,
-              ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(22),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: Image.asset(
+                    assetPath,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const Icon(
+                      CupertinoIcons.shopping_cart,
+                      size: 18,
+                      color: CartsScreen._textDark,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: CartsScreen._textDark,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  CupertinoIcons.chevron_right,
+                  color: CartsScreen._accentOrange,
+                  size: 22,
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Text(
-              name,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: CartsScreen._textDark,
-              ),
-            ),
-          ),
-          const Icon(
-            CupertinoIcons.chevron_right,
-            color: CartsScreen._accentOrange,
-            size: 22,
-          ),
-        ],
+        ),
       ),
     );
   }

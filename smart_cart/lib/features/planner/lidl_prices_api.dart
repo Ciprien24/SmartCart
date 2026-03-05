@@ -3,7 +3,22 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:smart_cart/core/product.dart';
 
+class LidlSnapshot {
+  final String? fetchedAt;
+  final List<Product> products;
+
+  const LidlSnapshot({
+    required this.fetchedAt,
+    required this.products,
+  });
+}
+
 Future<List<Product>> fetchLidlProducts(String url) async {
+  final snapshot = await fetchLidlSnapshot(url);
+  return snapshot.products;
+}
+
+Future<LidlSnapshot> fetchLidlSnapshot(String url) async {
   final response = await http.get(Uri.parse(url));
   if (response.statusCode != 200) {
     throw Exception('Failed to fetch Lidl prices (${response.statusCode})');
@@ -19,7 +34,7 @@ Future<List<Product>> fetchLidlProducts(String url) async {
     throw Exception('Missing or invalid "items" array');
   }
 
-  return rawItems
+  final products = rawItems
       .whereType<Map<String, dynamic>>()
       .map((item) {
         final name = (item['name'] ?? '').toString().trim();
@@ -42,4 +57,13 @@ Future<List<Product>> fetchLidlProducts(String url) async {
         );
       })
       .toList(growable: false);
+
+  final fetchedAtRaw = decoded['fetchedAt'];
+  final fetchedAt = fetchedAtRaw == null
+      ? null
+      : fetchedAtRaw.toString().trim().isEmpty
+      ? null
+      : fetchedAtRaw.toString();
+
+  return LidlSnapshot(fetchedAt: fetchedAt, products: products);
 }
