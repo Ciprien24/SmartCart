@@ -6,7 +6,6 @@ void main() {
     await tester.pumpWidget(const SmartCartApp());
 
     expect(find.text('SmartCart'), findsOneWidget);
-    expect(find.text('Your Carts'), findsOneWidget);
-    expect(find.text('New Cart'), findsOneWidget);
+    expect(find.text('Supermarkets'), findsOneWidget);
   });
 }
