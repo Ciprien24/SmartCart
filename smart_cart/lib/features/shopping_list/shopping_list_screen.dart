@@ -43,6 +43,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   bool _isLoadingCachedProducts = false;
   Timer? _saveDebounce;
   bool _isSaving = false;
+  final Set<ShoppingItem> _completingItems = <ShoppingItem>{};
+  final Set<ShoppingItem> _deletingItems = <ShoppingItem>{};
+  bool _showCompleted = false;
+  _ShoppingTab _activeTab = _ShoppingTab.list;
 
   @override
   void initState() {
@@ -72,17 +76,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     return '$day/$month/$year';
   }
 
-  String _displayGoal(String goal) {
-    switch (goal) {
-      case 'Lose weight':
-        return 'Lose Weight';
-      case 'Gain muscle':
-        return 'Gain Weight';
-      default:
-        return 'Maintain Weight';
-    }
-  }
-
   String? _storeLogoFor(String store) {
     switch (store) {
       case 'Kaufland':
@@ -94,33 +87,228 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     }
   }
 
-  String _unitFor(ShoppingItem item) {
-    const unitMap = {
-      'Chicken breast 1kg': '500g',
-      'Greek yogurt 1kg': '250g',
-      'Eggs 10 pcs': '10 pack',
-      'Oats 1kg': '500g',
-      'Rice 1kg': '1kg',
-      'Pasta 1kg': '500g',
-      'Bananas 1kg': '1kg',
-      'Apples 1kg': '1kg',
-      'Tomatoes 1kg': '1kg',
-      'Frozen veggies 1kg': '500g',
-      'Olive oil 500ml': '500ml',
-      'Peanut butter 500g': '250g',
-    };
-    return unitMap[item.product.name] ?? '1 unit';
+  String _displayNameFor(ShoppingItem item) {
+    return item.product.name.replaceFirst(RegExp(r'^\s*-\s*'), '').trim();
+  }
+
+  bool _containsAny(String source, List<String> keywords) {
+    for (final keyword in keywords) {
+      if (source.contains(keyword)) return true;
+    }
+    return false;
+  }
+
+  _NutritionInfo _nutritionInfoFor(ShoppingItem item) {
+    final name = item.product.name.toLowerCase();
+    final category = item.product.category.toLowerCase();
+
+    if (_containsAny(name, const ['pui', 'chicken', 'piept', 'tuna', 'ton'])) {
+      return const _NutritionInfo(
+        protein: 24,
+        carbs: 5,
+        fats: 5,
+        fiber: 0,
+        calories: 165,
+        description:
+            'High-quality lean protein option, useful for muscle support and satiety.',
+      );
+    }
+    if (_containsAny(name, const ['ovaz', 'oats', 'fasole', 'linte', 'naut'])) {
+      return const _NutritionInfo(
+        protein: 10,
+        carbs: 30,
+        fats: 5,
+        fiber: 8,
+        calories: 220,
+        description:
+            'Complex carbs and fiber help with sustained energy and digestion.',
+      );
+    }
+    if (_containsAny(name, const ['avocado', 'nuci', 'migdale', 'ulei', 'olive'])) {
+      return const _NutritionInfo(
+        protein: 3,
+        carbs: 6,
+        fats: 20,
+        fiber: 4,
+        calories: 230,
+        description:
+            'Rich in unsaturated fats that can support heart and hormonal health.',
+      );
+    }
+    if (_containsAny(category, const ['fruit', 'fruct', 'vegetable', 'legume'])) {
+      return const _NutritionInfo(
+        protein: 2,
+        carbs: 12,
+        fats: 1,
+        fiber: 4,
+        calories: 80,
+        description:
+            'Fresh produce tends to provide vitamins, minerals, and useful dietary fiber.',
+      );
+    }
+    return const _NutritionInfo(
+      protein: 6,
+      carbs: 14,
+      fats: 6,
+      fiber: 2,
+      calories: 140,
+      description:
+          'Balanced placeholder nutrition profile. AI nutrition estimates will refine this.',
+    );
+  }
+
+  Future<void> _showProductDetails(ShoppingItem item) async {
+    final displayName = _displayNameFor(item);
+    final info = _nutritionInfoFor(item);
+    final mealGroup = _mealBucketFor(item);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        Widget macroTile(String label, int value, Color color) {
+          return Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '$value g',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: _textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: _textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: _textDark,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Approx. ${info.calories} kcal per serving',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _textMuted,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F8),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'List group: $mealGroup',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: _textMuted,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F8),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'Store category: ${item.product.category}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: _textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    macroTile('Protein', info.protein, const Color(0xFFFBE2CF)),
+                    const SizedBox(width: 8),
+                    macroTile('Carbs', info.carbs, const Color(0xFFDDEAFE)),
+                    const SizedBox(width: 8),
+                    macroTile('Fats', info.fats, const Color(0xFFF9F1C9)),
+                    if (info.fiber > 0) ...[
+                      const SizedBox(width: 8),
+                      macroTile('Fiber', info.fiber, const Color(0xFFDDF6E8)),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  info.description,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _textDark,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Map<String, List<ShoppingItem>> _groupedItems() {
     final grouped = <String, List<ShoppingItem>>{};
-    for (final item in _items) {
-      grouped
-          .putIfAbsent(item.product.category, () => <ShoppingItem>[])
-          .add(item);
+    for (final item in _items.where((item) => !item.checked)) {
+      final group = _mealBucketFor(item);
+      grouped.putIfAbsent(group, () => <ShoppingItem>[]).add(item);
     }
     final ordered = <String, List<ShoppingItem>>{};
-    const order = ['Veggies', 'Fruits', 'Protein', 'Carbs', 'Fats'];
+    const order = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Misc'];
     for (final key in order) {
       if (grouped.containsKey(key)) {
         ordered[key] = grouped[key]!;
@@ -134,18 +322,110 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     return ordered;
   }
 
-  String _sectionTitle(String category) {
-    switch (category) {
-      case 'Veggies':
-      case 'Fruits':
-        return 'Produce';
-      case 'Carbs':
-        return 'Pantry';
-      case 'Fats':
-        return 'Essentials';
-      default:
-        return category;
+  List<ShoppingItem> get _completedItems =>
+      _items.where((item) => item.checked).toList(growable: false);
+
+  String _mealBucketFor(ShoppingItem item) {
+    final name = item.product.name.toLowerCase();
+    final category = item.product.category.toLowerCase();
+    final text = '$name $category';
+
+    if (_containsAny(text, const [
+      'chips',
+      'snack',
+      'biscuit',
+      'cookie',
+      'ciocol',
+      'chocolate',
+      'candy',
+      'cola',
+      'suc',
+      'juice',
+      'bar',
+      'nuci',
+      'nuts',
+    ])) {
+      return 'Snacks';
     }
+
+    if (_containsAny(text, const [
+      'ovaz',
+      'oats',
+      'cereal',
+      'musli',
+      'lapte',
+      'milk',
+      'iaurt',
+      'yogurt',
+      'oua',
+      'egg',
+      'paine',
+      'bread',
+      'croissant',
+      'cafea',
+      'coffee',
+      'ceai',
+      'tea',
+      'gem',
+      'jam',
+      'miere',
+      'honey',
+      'patiserie',
+    ])) {
+      return 'Breakfast';
+    }
+
+    if (_containsAny(text, const [
+      'pui',
+      'chicken',
+      'curcan',
+      'turkey',
+      'vita',
+      'beef',
+      'porc',
+      'fish',
+      'peste',
+      'ton',
+      'tuna',
+      'somon',
+      'salmon',
+      'orez',
+      'rice',
+      'paste',
+      'pasta',
+      'supa',
+      'soup',
+      'fasole',
+      'linte',
+      'naut',
+      'congelat',
+    ])) {
+      return 'Lunch';
+    }
+
+    if (_containsAny(text, const [
+      'legume',
+      'salata',
+      'rosii',
+      'tomato',
+      'castrav',
+      'broccoli',
+      'spanac',
+      'spinach',
+      'ardei',
+      'fruct',
+      'apple',
+      'banana',
+      'avocado',
+      'branza',
+      'cheese',
+      'mozzarella',
+      'telemea',
+    ])) {
+      return 'Dinner';
+    }
+
+    return 'Misc';
   }
 
   double get _total => _items.fold(0.0, (sum, item) => sum + item.lineTotal);
@@ -162,13 +442,40 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   void _toggleChecked(ShoppingItem item) {
-    setState(() => item.checked = !item.checked);
-    _scheduleSave();
+    if (item.checked) {
+      setState(() => item.checked = false);
+      _scheduleSave();
+      return;
+    }
+
+    setState(() {
+      _completingItems.add(item);
+    });
+
+    Future.delayed(const Duration(milliseconds: 760), () {
+      if (!mounted) return;
+      setState(() {
+        _completingItems.remove(item);
+        item.checked = true;
+      });
+      _scheduleSave();
+    });
   }
 
   void _deleteItem(ShoppingItem item) {
-    setState(() => _items.remove(item));
-    _scheduleSave();
+    if (_deletingItems.contains(item)) return;
+    setState(() {
+      _deletingItems.add(item);
+    });
+
+    Future.delayed(const Duration(milliseconds: 760), () {
+      if (!mounted) return;
+      setState(() {
+        _deletingItems.remove(item);
+        _items.remove(item);
+      });
+      _scheduleSave();
+    });
   }
 
   Future<void> _showReplaceSheet(ShoppingItem currentItem) async {
@@ -352,12 +659,6 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   'Budget: ${widget.preferences.budgetWeekly.toStringAsFixed(0)} RON',
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _pillInfo(
-                  'Goal: ${_displayGoal(widget.preferences.goal)}',
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -405,7 +706,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   }
 
   Widget _buildItemCard(ShoppingItem item) {
-    final subtitle = '${_unitFor(item)} x ${item.quantity}';
+    final displayName = _displayNameFor(item);
+    final isCompleting = _completingItems.contains(item);
+    final isDeleting = _deletingItems.contains(item);
+    final isAnimatingOut = isCompleting || isDeleting;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Slidable(
@@ -415,7 +719,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
           extentRatio: 0.34,
           children: [
             CustomSlidableAction(
-              onPressed: (_) => _showReplaceSheet(item),
+              onPressed: (_) {
+                if (isAnimatingOut) return;
+                _showReplaceSheet(item);
+              },
               padding: EdgeInsets.zero,
               backgroundColor: const Color(0xFF2B6EEB),
               borderRadius: BorderRadius.zero,
@@ -441,133 +748,573 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             ),
           ],
         ),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x12000000),
-                blurRadius: 18,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () => _toggleChecked(item),
+        child: GestureDetector(
+          onLongPress: () {
+            if (isAnimatingOut) return;
+            _showProductDetails(item);
+          },
+          child: AnimatedScale(
+            scale: isAnimatingOut ? 1.08 : 1.0,
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutBack,
+            child: AnimatedSlide(
+              offset: isCompleting
+                  ? const Offset(0.65, 0)
+                  : isDeleting
+                  ? const Offset(-0.65, 0)
+                  : Offset.zero,
+              duration: const Duration(milliseconds: 620),
+              curve: Curves.easeInCubic,
+              child: AnimatedOpacity(
+                opacity: isAnimatingOut ? 0 : 1,
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeIn,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 28,
-                  height: 28,
+                  duration: const Duration(milliseconds: 620),
+                  curve: Curves.easeOut,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: item.checked ? _accentOrange : Colors.transparent,
-                    border: Border.all(
-                      color: item.checked
-                          ? _accentOrange
-                          : const Color(0xFFBAC1CF),
-                      width: 1.5,
-                    ),
+                    color: isCompleting
+                        ? const Color(0xFF9EF2BF)
+                        : isDeleting
+                        ? const Color(0xFFFFC6C6)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x12000000),
+                        blurRadius: 18,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  child: AnimatedOpacity(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                  child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    if (isAnimatingOut) return;
+                    _toggleChecked(item);
+                  },
+                  child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    opacity: item.checked ? 1 : 0,
-                    child: const Icon(
-                      CupertinoIcons.check_mark,
-                      color: Colors.white,
-                      size: 16,
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: item.checked ? _accentOrange : Colors.transparent,
+                      border: Border.all(
+                        color: item.checked
+                            ? _accentOrange
+                            : const Color(0xFFBAC1CF),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 180),
+                      opacity: item.checked || isCompleting || isDeleting ? 1 : 0,
+                      child: Icon(
+                        isDeleting
+                            ? CupertinoIcons.delete
+                            : CupertinoIcons.check_mark,
+                        color: Colors.black,
+                        size: isDeleting ? 14 : 16,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: _textDark.withValues(
+                            alpha: item.checked ? 0.55 : 1,
+                          ),
+                          decoration: item.checked
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          decorationColor: Colors.black,
+                          decorationThickness: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      item.product.name,
-                      style: TextStyle(
-                        fontSize: 18,
+                      _formatRon(item.lineTotal),
+                      style: const TextStyle(
+                        fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: _textDark.withValues(
-                          alpha: item.checked ? 0.55 : 1,
-                        ),
-                        decoration: item.checked
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                        decorationColor: Colors.black,
-                        decorationThickness: 2,
+                        color: _textDark,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: _textMuted,
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 24,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F3F8),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 24,
+                                minHeight: 24,
+                              ),
+                              onPressed: isAnimatingOut
+                                  ? null
+                                  : () => _decrease(item),
+                              icon: const Icon(
+                                CupertinoIcons.minus,
+                                size: 12,
+                                color: _accentOrange,
+                              ),
+                            ),
+                            Text(
+                              '${item.quantity}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: _textDark,
+                              ),
+                            ),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 24,
+                                minHeight: 24,
+                              ),
+                              onPressed: isAnimatingOut
+                                  ? null
+                                  : () => _increase(item),
+                              icon: const Icon(
+                                CupertinoIcons.plus,
+                                size: 12,
+                                color: _accentOrange,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    _formatRon(item.lineTotal),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: _textDark,
-                    ),
+                  ],
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F3F8),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => _decrease(item),
-                          icon: const Icon(
-                            CupertinoIcons.minus,
-                            size: 14,
-                            color: _accentOrange,
-                          ),
-                        ),
-                        Text(
-                          '${item.quantity}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: _textDark,
-                          ),
-                        ),
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => _increase(item),
-                          icon: const Icon(
-                            CupertinoIcons.plus,
-                            size: 14,
-                            color: _accentOrange,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Map<String, List<_RecipePlaceholder>> _buildPlaceholderRecipesByMeal() {
+    final firstItems = _items
+        .where((item) => !item.checked)
+        .take(4)
+        .map((item) => _displayNameFor(item))
+        .toList(growable: false);
+
+    final ingredientPreview = firstItems.isEmpty
+        ? 'Built from your generated shopping list'
+        : firstItems.join(' • ');
+
+    return {
+      'Breakfast': [
+        _RecipePlaceholder(
+          title: 'Protein Oats Bowl',
+          subtitle: 'Quick morning meal',
+          duration: '15 min',
+          difficulty: 'Easy',
+          calories: 420,
+          description:
+              'AI recipe recommendation placeholder. This will soon be personalized from your list and nutrition goals.',
+          mealInfo:
+              'A balanced breakfast placeholder focused on slow carbs and protein for sustained energy.',
+          ingredientsPreview: ingredientPreview,
+        ),
+      ],
+      'Lunch': [
+        _RecipePlaceholder(
+          title: 'Protein Bowl',
+          subtitle: 'Balanced midday option',
+          duration: '25 min',
+          difficulty: 'Medium',
+          calories: 560,
+          description:
+              'Placeholder recipe card. Future AI will optimize ingredients, portions, and prices across selected stores.',
+          mealInfo:
+              'Lunch placeholder with a protein base, vegetables, and a carb side for better satiety.',
+          ingredientsPreview: ingredientPreview,
+        ),
+      ],
+      'Dinner': [
+        _RecipePlaceholder(
+          title: 'Veggie Pasta',
+          subtitle: 'Light dinner option',
+          duration: '35 min',
+          difficulty: 'Medium',
+          calories: 510,
+          description:
+              'Placeholder recipe card. AI will later adapt this using your available products and preferences.',
+          mealInfo:
+              'Dinner placeholder designed to be lighter while still covering key macro needs.',
+          ingredientsPreview: ingredientPreview,
+        ),
+      ],
+      'Snacks': [
+        _RecipePlaceholder(
+          title: 'Yogurt Fruit Snack',
+          subtitle: 'Simple snack idea',
+          duration: '10 min',
+          difficulty: 'Easy',
+          calories: 230,
+          description:
+              'Placeholder snack recommendation. AI will later suggest budget-friendly snack alternatives.',
+          mealInfo:
+              'Snack placeholder centered on a quick, practical option between main meals.',
+          ingredientsPreview: ingredientPreview,
+        ),
+      ],
+    };
+  }
+
+  Widget _buildRecipesSection({bool includeTitle = true}) {
+    final recipesByMeal = _buildPlaceholderRecipesByMeal();
+    const mealOrder = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 18),
+        if (includeTitle)
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 10),
+            child: Text(
+              'Recipes',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: _textDark,
+              ),
+            ),
+          ),
+        for (final meal in mealOrder) ...[
+          if ((recipesByMeal[meal] ?? const []).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 10, top: 4),
+              child: Text(
+                meal,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: _textDark,
+                ),
+              ),
+            ),
+          ...(recipesByMeal[meal] ?? const []).map(
+            (recipe) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GestureDetector(
+                onLongPress: () => _showRecipeDetails(recipe, meal),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x12000000),
+                        blurRadius: 18,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipe.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: _textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        recipe.subtitle,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _recipePill(
+                            recipe.duration,
+                            type: _RecipePillType.duration,
+                          ),
+                          const SizedBox(width: 8),
+                          _recipePill(
+                            recipe.difficulty,
+                            type: _RecipePillType.difficulty,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        recipe.description,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _textDark,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        recipe.ingredientsPreview,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _recipePill(String text, {required _RecipePillType type}) {
+    final bgColor = _recipePillColor(type: type, text: text);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: _textMuted,
+        ),
+      ),
+    );
+  }
+
+  Color _recipePillColor({
+    required _RecipePillType type,
+    required String text,
+  }) {
+    const pastelGreen = Color(0xFFDDF6E8);
+    const pastelYellow = Color(0xFFF9F1C9);
+    const pastelRed = Color(0xFFFBE2E2);
+
+    if (type == _RecipePillType.difficulty) {
+      final value = text.toLowerCase();
+      if (value.contains('easy')) return pastelGreen;
+      if (value.contains('medium')) return pastelYellow;
+      if (value.contains('hard')) return pastelRed;
+      return pastelYellow;
+    }
+
+    final minutes = _durationToMinutes(text);
+    if (minutes <= 20) return pastelGreen;
+    if (minutes <= 60) return pastelYellow;
+    return pastelRed;
+  }
+
+  int _durationToMinutes(String text) {
+    final value = text.toLowerCase();
+    final numbers = RegExp(r'\d+')
+        .allMatches(value)
+        .map((m) => int.tryParse(m.group(0) ?? '') ?? 0)
+        .toList();
+    if (numbers.isEmpty) return 30;
+
+    final hasHour = value.contains('hour') || value.contains('h');
+    final hasMin = value.contains('min');
+
+    if (hasHour && hasMin && numbers.length >= 2) {
+      return (numbers[0] * 60) + numbers[1];
+    }
+    if (hasHour) {
+      return numbers[0] * 60;
+    }
+    return numbers[0];
+  }
+
+  Future<void> _showRecipeDetails(
+    _RecipePlaceholder recipe,
+    String mealGroup,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  recipe.title,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: _textDark,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${recipe.calories} kcal per serving',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _textMuted,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _sheetPill('Meal: $mealGroup'),
+                    _recipePill(
+                      recipe.duration,
+                      type: _RecipePillType.duration,
+                    ),
+                    _recipePill(
+                      recipe.difficulty,
+                      type: _RecipePillType.difficulty,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  recipe.mealInfo,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _textDark,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  recipe.ingredientsPreview,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: _textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _sheetPill(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F3F8),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: _textMuted,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopTabs() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F3F8),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          _buildTabButton('Shopping List', _ShoppingTab.list),
+          _buildTabButton('Recipes', _ShoppingTab.recipes),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton(String label, _ShoppingTab tab) {
+    final isActive = _activeTab == tab;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _activeTab = tab),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+            boxShadow: isActive
+                ? const [
+                    BoxShadow(
+                      color: Color(0x14000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: isActive ? _textDark : _textMuted,
+            ),
           ),
         ),
       ),
@@ -578,6 +1325,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
     final grouped = _groupedItems();
+    final completedItems = _completedItems;
     final logoPath = _storeLogoFor(widget.preferences.supermarket);
 
     return PopScope(
@@ -609,44 +1357,144 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Shopping List',
-                        style: TextStyle(
-                          color: _textDark,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      _buildSummaryCard(logoPath),
-                      if (_isLoadingCachedProducts) ...[
-                        const SizedBox(height: 10),
-                        const LinearProgressIndicator(
-                          color: _accentOrange,
-                          backgroundColor: Color(0xFFE9ECF3),
-                          minHeight: 2,
-                        ),
-                      ],
-                      const SizedBox(height: 18),
-                      for (final entry in grouped.entries) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 4,
-                            bottom: 10,
-                            top: 6,
-                          ),
-                          child: Text(
-                            _sectionTitle(entry.key),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: _textDark,
+                      _buildTopTabs(),
+                      const SizedBox(height: 14),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 700),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, animation) {
+                          final showingShopping =
+                              _activeTab == _ShoppingTab.list &&
+                              child.key == const ValueKey('shopping_tab');
+                          final showingRecipes =
+                              _activeTab == _ShoppingTab.recipes &&
+                              child.key == const ValueKey('recipes_tab');
+                          final beginX = (showingShopping || !showingRecipes)
+                              ? -0.06
+                              : 0.06;
+                          final offset = Tween<Offset>(
+                            begin: Offset(beginX, 0),
+                            end: Offset.zero,
+                          ).animate(animation);
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: offset,
+                              child: child,
                             ),
-                          ),
-                        ),
-                        ...entry.value.map(_buildItemCard),
-                      ],
+                          );
+                        },
+                        child: _activeTab == _ShoppingTab.list
+                            ? KeyedSubtree(
+                                key: const ValueKey('shopping_tab'),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildSummaryCard(logoPath),
+                                    if (_isLoadingCachedProducts) ...[
+                                      const SizedBox(height: 10),
+                                      const LinearProgressIndicator(
+                                        color: _accentOrange,
+                                        backgroundColor: Color(0xFFE9ECF3),
+                                        minHeight: 2,
+                                      ),
+                                    ],
+                                    const SizedBox(height: 18),
+                                    for (final entry in grouped.entries) ...[
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 4,
+                                          bottom: 10,
+                                          top: 6,
+                                        ),
+                                        child: Text(
+                                          entry.key,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w900,
+                                            color: _textDark,
+                                          ),
+                                        ),
+                                      ),
+                                      ...entry.value.map(_buildItemCard),
+                                    ],
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(18),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x0F000000),
+                                            blurRadius: 12,
+                                            offset: Offset(0, 6),
+                                          ),
+                                        ],
+                                      ),
+                                      child: ExpansionTile(
+                                        key: ValueKey(completedItems.length),
+                                        title: Text(
+                                          'Completed (${completedItems.length})',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                            color: _textMuted,
+                                          ),
+                                        ),
+                                        initiallyExpanded: _showCompleted,
+                                        onExpansionChanged: (value) {
+                                          setState(() {
+                                            _showCompleted = value;
+                                          });
+                                        },
+                                        childrenPadding:
+                                            const EdgeInsets.fromLTRB(
+                                              12,
+                                              4,
+                                              12,
+                                              8,
+                                            ),
+                                        collapsedShape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            18,
+                                          ),
+                                        ),
+                                        children: completedItems.isEmpty
+                                            ? const [
+                                                Padding(
+                                                  padding: EdgeInsets.only(
+                                                    bottom: 10,
+                                                  ),
+                                                  child: Text(
+                                                    'No checked items yet.',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: _textMuted,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ]
+                                            : completedItems
+                                                .map(_buildItemCard)
+                                                .toList(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : KeyedSubtree(
+                                key: const ValueKey('recipes_tab'),
+                                child: _buildRecipesSection(includeTitle: false),
+                              ),
+                      ),
                     ],
                   ),
                 ),
@@ -734,6 +1582,50 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       ),
     );
   }
+}
+
+enum _ShoppingTab { list, recipes }
+
+enum _RecipePillType { duration, difficulty }
+
+class _NutritionInfo {
+  const _NutritionInfo({
+    required this.protein,
+    required this.carbs,
+    required this.fats,
+    required this.fiber,
+    required this.calories,
+    required this.description,
+  });
+
+  final int protein;
+  final int carbs;
+  final int fats;
+  final int fiber;
+  final int calories;
+  final String description;
+}
+
+class _RecipePlaceholder {
+  const _RecipePlaceholder({
+    required this.title,
+    required this.subtitle,
+    required this.duration,
+    required this.difficulty,
+    required this.calories,
+    required this.description,
+    required this.mealInfo,
+    required this.ingredientsPreview,
+  });
+
+  final String title;
+  final String subtitle;
+  final String duration;
+  final String difficulty;
+  final int calories;
+  final String description;
+  final String mealInfo;
+  final String ingredientsPreview;
 }
 
 class _ReplaceItemBottomSheet extends StatefulWidget {

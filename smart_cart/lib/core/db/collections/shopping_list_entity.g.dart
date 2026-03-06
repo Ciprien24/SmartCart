@@ -44,13 +44,28 @@ const ShoppingListEntitySchema = CollectionSchema(
       type: IsarType.objectList,
       target: r'ShoppingItemEntity',
     ),
-    r'store': PropertySchema(
+    r'multipleStores': PropertySchema(
       id: 5,
+      name: r'multipleStores',
+      type: IsarType.bool,
+    ),
+    r'selectedStores': PropertySchema(
+      id: 6,
+      name: r'selectedStores',
+      type: IsarType.stringList,
+    ),
+    r'shoppingDays': PropertySchema(
+      id: 7,
+      name: r'shoppingDays',
+      type: IsarType.long,
+    ),
+    r'store': PropertySchema(
+      id: 8,
       name: r'store',
       type: IsarType.string,
     ),
     r'title': PropertySchema(
-      id: 6,
+      id: 9,
       name: r'title',
       type: IsarType.string,
     )
@@ -96,6 +111,13 @@ int _shoppingListEntityEstimateSize(
           ShoppingItemEntitySchema.estimateSize(value, offsets, allOffsets);
     }
   }
+  bytesCount += 3 + object.selectedStores.length * 3;
+  {
+    for (var i = 0; i < object.selectedStores.length; i++) {
+      final value = object.selectedStores[i];
+      bytesCount += value.length * 3;
+    }
+  }
   {
     final value = object.store;
     if (value != null) {
@@ -122,8 +144,11 @@ void _shoppingListEntitySerialize(
     ShoppingItemEntitySchema.serialize,
     object.items,
   );
-  writer.writeString(offsets[5], object.store);
-  writer.writeString(offsets[6], object.title);
+  writer.writeBool(offsets[5], object.multipleStores);
+  writer.writeStringList(offsets[6], object.selectedStores);
+  writer.writeLong(offsets[7], object.shoppingDays);
+  writer.writeString(offsets[8], object.store);
+  writer.writeString(offsets[9], object.title);
 }
 
 ShoppingListEntity _shoppingListEntityDeserialize(
@@ -145,8 +170,11 @@ ShoppingListEntity _shoppingListEntityDeserialize(
         ShoppingItemEntity(),
       ) ??
       [];
-  object.store = reader.readStringOrNull(offsets[5]);
-  object.title = reader.readString(offsets[6]);
+  object.multipleStores = reader.readBool(offsets[5]);
+  object.selectedStores = reader.readStringList(offsets[6]) ?? [];
+  object.shoppingDays = reader.readLong(offsets[7]);
+  object.store = reader.readStringOrNull(offsets[8]);
+  object.title = reader.readString(offsets[9]);
   return object;
 }
 
@@ -174,8 +202,14 @@ P _shoppingListEntityDeserializeProp<P>(
           ) ??
           []) as P;
     case 5:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 6:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 7:
+      return (reader.readLong(offset)) as P;
+    case 8:
+      return (reader.readStringOrNull(offset)) as P;
+    case 9:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -872,6 +906,298 @@ extension ShoppingListEntityQueryFilter
   }
 
   QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      multipleStoresEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'multipleStores',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'selectedStores',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'selectedStores',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'selectedStores',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'selectedStores',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'selectedStores',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'selectedStores',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'selectedStores',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementMatches(String pattern,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'selectedStores',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'selectedStores',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'selectedStores',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'selectedStores',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'selectedStores',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'selectedStores',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'selectedStores',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'selectedStores',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      selectedStoresLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'selectedStores',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      shoppingDaysEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'shoppingDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      shoppingDaysGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'shoppingDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      shoppingDaysLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'shoppingDays',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
+      shoppingDaysBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'shoppingDays',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterFilterCondition>
       storeIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1234,6 +1560,34 @@ extension ShoppingListEntityQuerySortBy
   }
 
   QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
+      sortByMultipleStores() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'multipleStores', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
+      sortByMultipleStoresDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'multipleStores', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
+      sortByShoppingDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'shoppingDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
+      sortByShoppingDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'shoppingDays', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
       sortByStore() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'store', Sort.asc);
@@ -1335,6 +1689,34 @@ extension ShoppingListEntityQuerySortThenBy
   }
 
   QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
+      thenByMultipleStores() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'multipleStores', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
+      thenByMultipleStoresDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'multipleStores', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
+      thenByShoppingDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'shoppingDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
+      thenByShoppingDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'shoppingDays', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QAfterSortBy>
       thenByStore() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'store', Sort.asc);
@@ -1394,6 +1776,27 @@ extension ShoppingListEntityQueryWhereDistinct
   }
 
   QueryBuilder<ShoppingListEntity, ShoppingListEntity, QDistinct>
+      distinctByMultipleStores() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'multipleStores');
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QDistinct>
+      distinctBySelectedStores() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'selectedStores');
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QDistinct>
+      distinctByShoppingDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'shoppingDays');
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, ShoppingListEntity, QDistinct>
       distinctByStore({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'store', caseSensitive: caseSensitive);
@@ -1446,6 +1849,27 @@ extension ShoppingListEntityQueryProperty
       itemsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'items');
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, bool, QQueryOperations>
+      multipleStoresProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'multipleStores');
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, List<String>, QQueryOperations>
+      selectedStoresProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'selectedStores');
+    });
+  }
+
+  QueryBuilder<ShoppingListEntity, int, QQueryOperations>
+      shoppingDaysProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'shoppingDays');
     });
   }
 

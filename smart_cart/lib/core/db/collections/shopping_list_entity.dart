@@ -11,8 +11,11 @@ class ShoppingListEntity {
   String title = '';
   DateTime createdAt = DateTime.now();
   String? store;
+  bool multipleStores = false;
+  List<String> selectedStores = [];
   String? goal;
   double? budget;
+  int shoppingDays = 7;
   String? fetchedAt;
 
   List<ShoppingItemEntity> items = [];

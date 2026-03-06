@@ -27,15 +27,11 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   static const Color _error = Color(0xFFD64545);
 
   final List<String> _supermarkets = const ['Kaufland', 'Lidl'];
-  final List<String> _goalLabels = const [
-    'Lose Weight',
-    'Maintain Weight',
-    'Gain Weight',
-  ];
-
   double? _budget;
   String? _selectedSupermarket;
-  String _selectedGoal = 'Maintain Weight';
+  List<String> _selectedMultipleStores = const [];
+  int _shoppingDays = 7;
+  bool _multipleStores = false;
   String? _budgetError;
   String? _supermarketError;
   String? _generateError;
@@ -136,24 +132,70 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   }
 
   Future<void> _openSupermarketPicker() async {
-    final result = await showCupertinoModalPopup<String>(
+    final result = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => CupertinoActionSheet(
-        title: const Text('Preferred Supermarket'),
-        actions: _supermarkets
-            .map(
-              (market) => CupertinoActionSheetAction(
-                onPressed: () => Navigator.of(context).pop(market),
-                child: Text(market),
-              ),
-            )
-            .toList(),
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.of(context).pop(),
-          isDefaultAction: true,
-          child: const Text('Cancel'),
-        ),
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Preferred Supermarket',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: _textDark,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ..._supermarkets.map(
+                  (market) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      market,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: _textDark,
+                      ),
+                    ),
+                    trailing: _selectedSupermarket == market
+                        ? const Icon(
+                            CupertinoIcons.check_mark_circled_solid,
+                            color: _accentOrange,
+                          )
+                        : const Icon(
+                            CupertinoIcons.circle,
+                            color: _textMuted,
+                          ),
+                    onTap: () => Navigator.of(context).pop(market),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: _textMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
 
     if (!mounted || result == null) return;
@@ -163,15 +205,254 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     });
   }
 
-  String _goalToPreferenceValue(String label) {
-    switch (label) {
-      case 'Lose Weight':
-        return 'Lose weight';
-      case 'Gain Weight':
-        return 'Gain muscle';
-      default:
-        return 'Maintain';
+  Future<List<String>?> _openMultipleStoresPicker() async {
+    return showModalBottomSheet<List<String>>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final tempSelected = _selectedMultipleStores.toSet();
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select Multiple Stores',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: _textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ..._supermarkets.map((market) {
+                      return CheckboxListTile(
+                        value: tempSelected.contains(market),
+                        activeColor: _accentOrange,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          market,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: _textDark,
+                          ),
+                        ),
+                        onChanged: (checked) {
+                          setModalState(() {
+                            if (checked == true) {
+                              tempSelected.add(market);
+                            } else {
+                              tempSelected.remove(market);
+                            }
+                          });
+                        },
+                      );
+                    }),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _accentOrange,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () =>
+                            Navigator.of(context).pop(tempSelected.toList()),
+                        child: const Text(
+                          'Done',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _toggleMultipleStores(bool enabled) async {
+    if (!enabled) {
+      setState(() {
+        _multipleStores = false;
+      });
+      return;
     }
+
+    final result = await _openMultipleStoresPicker();
+    if (!mounted) return;
+    if (result == null || result.isEmpty) {
+      setState(() {
+        _multipleStores = false;
+      });
+      return;
+    }
+
+    final sorted = [...result]..sort();
+    setState(() {
+      _multipleStores = true;
+      _selectedMultipleStores = sorted;
+      if (_selectedSupermarket == null || !sorted.contains(_selectedSupermarket)) {
+        _selectedSupermarket = sorted.first;
+      }
+      _supermarketError = null;
+    });
+  }
+
+  Future<void> _showMultipleStoresInfo() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Multiple Stores',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: _textDark,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'When enabled, AI will compare prices across your selected '
+                'supermarkets and prefer more budget-friendly alternatives while '
+                'still matching your goals.',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                  color: _textDark,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accentOrange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Got it',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDurationPicker() async {
+    final result = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        double selectedDays = _shoppingDays.toDouble();
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 20,
+                bottom: 20 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Shopping Period',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: _textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${selectedDays.toStringAsFixed(0)} days',
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      color: _textDark,
+                    ),
+                  ),
+                  Slider(
+                    min: 1,
+                    max: 30,
+                    divisions: 29,
+                    activeColor: _accentOrange,
+                    value: selectedDays.clamp(1, 30),
+                    onChanged: (value) {
+                      setModalState(() {
+                        selectedDays = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _accentOrange,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () =>
+                          Navigator.of(context).pop(selectedDays.round()),
+                      child: const Text(
+                        'Done',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted || result == null) return;
+    setState(() {
+      _shoppingDays = result;
+    });
   }
 
   Future<void> _continue() async {
@@ -187,10 +468,13 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
 
     if (_budgetError != null || _supermarketError != null) return;
 
+    final primaryStore = _selectedSupermarket!;
     final preferences = Preferences(
       budgetWeekly: _budget!,
-      supermarket: _selectedSupermarket!,
-      goal: _goalToPreferenceValue(_selectedGoal),
+      supermarket: primaryStore,
+      supermarkets: _multipleStores ? _selectedMultipleStores : [primaryStore],
+      goal: 'Maintain',
+      shoppingDays: _shoppingDays,
     );
 
     setState(() {
@@ -278,14 +562,18 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                 ),
                 const Spacer(),
                 Flexible(
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: _textMuted,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      value,
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: _textMuted,
+                      ),
                     ),
                   ),
                 ),
@@ -299,72 +587,6 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildGoalCard() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 24,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(10, 6, 10, 10),
-            child: Text(
-              'Goal',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: _textDark,
-              ),
-            ),
-          ),
-          Row(
-            children: _goalLabels
-                .map((label) {
-                  final isSelected = _selectedGoal == label;
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _selectedGoal = label),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? _accentOrange
-                              : const Color(0xFFF1F3F8),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected ? Colors.white : _textMuted,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                })
-                .toList(growable: false),
-          ),
-        ],
       ),
     );
   }
@@ -435,7 +657,9 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                     const SizedBox(height: 18),
                     _buildValueCard(
                       label: 'Supermarket',
-                      value: _selectedSupermarket ?? 'Choose Supermarket',
+                      value: _multipleStores && _selectedMultipleStores.isNotEmpty
+                          ? _selectedMultipleStores.join(', ')
+                          : (_selectedSupermarket ?? 'Choose Supermarket'),
                       onTap: _openSupermarketPicker,
                     ),
                     if (_supermarketError != null)
@@ -451,7 +675,65 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                         ),
                       ),
                     const SizedBox(height: 18),
-                    _buildGoalCard(),
+                    _buildValueCard(
+                      label: 'Duration',
+                      value: '$_shoppingDays days',
+                      onTap: _openDurationPicker,
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      height: 78,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x14000000),
+                            blurRadius: 24,
+                            offset: Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            const Text(
+                              'Multiple stores',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: _textDark,
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF2F3F8),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                onPressed: _showMultipleStoresInfo,
+                                icon: const Icon(
+                                  CupertinoIcons.question_circle_fill,
+                                  size: 18,
+                                  color: _textMuted,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            CupertinoSwitch(
+                              activeTrackColor: _accentOrange,
+                              value: _multipleStores,
+                              onChanged: _toggleMultipleStores,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     if (_generateError != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 10, left: 8),

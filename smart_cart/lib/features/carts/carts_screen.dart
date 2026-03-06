@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:smart_cart/features/carts/saved_lists_screen.dart';
 import 'package:smart_cart/features/preferences/preferences_screen.dart';
+import 'package:smart_cart/features/profile/user_profile_screen.dart';
 
 class CartsScreen extends StatelessWidget {
   const CartsScreen({super.key});
@@ -74,6 +75,39 @@ class CartsScreen extends StatelessWidget {
                         onTap: () => _openStore(context, _stores[1].name),
                       ),
                     ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 20,
+              bottom: 20 + MediaQuery.of(context).padding.bottom,
+              child: Container(
+                width: 68,
+                height: 68,
+                decoration: const BoxDecoration(
+                  color: _accentOrange,
+                  shape: BoxShape.circle,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const UserProfileScreen(),
+                        ),
+                      );
+                    },
+                    child: const Center(
+                      child: Icon(
+                        CupertinoIcons.person_fill,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
                   ),
                 ),
               ),

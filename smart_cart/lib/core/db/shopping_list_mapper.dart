@@ -30,8 +30,11 @@ class ShoppingListMapper {
       ..title = '${preferences.supermarket} • ${_formatDate(created)}'
       ..createdAt = created
       ..store = preferences.supermarket
+      ..multipleStores = preferences.selectedSupermarkets.length > 1
+      ..selectedStores = List<String>.from(preferences.selectedSupermarkets)
       ..goal = preferences.goal
       ..budget = preferences.budgetWeekly
+      ..shoppingDays = preferences.shoppingDays
       ..fetchedAt = fetchedAt
       ..items = plan.items.map((item) {
         return ShoppingItemEntity()
@@ -46,6 +49,9 @@ class ShoppingListMapper {
 
   static ShoppingListDomainModel toDomain(ShoppingListEntity entity) {
     final store = entity.store ?? 'Lidl';
+    final selectedStores = entity.selectedStores.isNotEmpty
+        ? entity.selectedStores
+        : [store];
 
     final planItems = entity.items.map((item) {
       final product = Product(
@@ -73,7 +79,9 @@ class ShoppingListMapper {
       preferences: Preferences(
         budgetWeekly: entity.budget ?? 0,
         supermarket: store,
+        supermarkets: List<String>.from(selectedStores),
         goal: entity.goal ?? 'Maintain',
+        shoppingDays: entity.shoppingDays,
       ),
     );
   }

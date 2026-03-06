@@ -1,10 +1,56 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:smart_cart/core/candidates/candidate_builder.dart';
+import 'package:smart_cart/core/db/normalized_product_repository.dart';
+import 'package:smart_cart/core/db/product_cache_store.dart';
+import 'package:smart_cart/core/normalization/normalization_debug.dart';
 import 'package:smart_cart/features/carts/carts_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (kDebugMode) {
+    unawaited(_debugNormalizationFromCachedLidl());
+    unawaited(_debugCandidateStats());
+  }
   runApp(const SmartCartApp());
+}
+
+Future<void> _debugNormalizationFromCachedLidl() async {
+  try {
+    final products = await ProductCacheStore().getCachedProducts('Lidl');
+    debugPrint(
+      '[Normalization Debug] Loaded ${products.length} cached Lidl products',
+    );
+    debugPrintNormalizationSummary(products);
+  } catch (error) {
+    debugPrint('[Normalization Debug] Failed to inspect cache: $error');
+  }
+}
+
+Future<void> _debugCandidateStats() async {
+  try {
+    final cacheStore = ProductCacheStore();
+    final cached = await cacheStore.getCachedProducts('Lidl');
+    await cacheStore.saveCachedProducts('Lidl', null, cached);
+
+    final repo = NormalizedProductRepository();
+    final stored = await repo.getAllForStore('Lidl');
+    debugPrint('[Check] normalized stored (Lidl): ${stored.length}');
+
+    final candidates = await CandidateBuilder().buildCandidates(
+      store: 'Lidl',
+      budget: 300,
+      goal: 'Maintain',
+      debug: true,
+    );
+    debugPrint('[Check] candidates returned: ${candidates.length}');
+  } catch (error) {
+    debugPrint('[Check] candidate stats failed: $error');
+  }
 }
 
 class SmartCartApp extends StatelessWidget {

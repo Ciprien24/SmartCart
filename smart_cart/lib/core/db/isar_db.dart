@@ -1,6 +1,7 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'collections/normalized_product_entity.dart';
 import 'collections/product_cache_entity.dart';
 import 'collections/shopping_list_entity.dart';
 
@@ -16,7 +17,11 @@ class IsarDb {
 
     final dir = await getApplicationDocumentsDirectory();
     _isar = await Isar.open(
-      [ShoppingListEntitySchema, ProductCacheEntitySchema],
+      [
+        ShoppingListEntitySchema,
+        ProductCacheEntitySchema,
+        NormalizedProductEntitySchema,
+      ],
       directory: dir.path,
       name: 'smartcart_db',
     );
